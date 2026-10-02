@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Everest, Together</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Hero section -->
+  <div class="hero" id="hero">
+    <img class="hero-image" id="heroImage" alt="" loading="eager">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <h1 class="hero-title" id="nodeTitle">Everest, Together</h1>
+      <p class="hero-subtitle" id="nodeSubtitle">Loading…</p>
+    </div>
+    <div class="image-credit" id="imageCredit"></div>
+  </div>
+
+  <!-- Main content -->
+  <div class="container">
+    <!-- Story text -->
+    <div class="story-text" id="storyText" role="article"></div>
+
+    <!-- Question section -->
+    <div class="question-section" id="questionSection" style="display: none;">
+      <p class="question-text" id="questionText"></p>
+      <div class="vote-buttons" id="voteButtons"></div>
+      <p id="voteStatus" style="text-align: center; color: var(--text-muted); margin-top: 1rem;"></p>
+    </div>
+
+    <!-- Results section -->
+    <div class="results" id="resultsSection" style="display: none;"></div>
+
+    <!-- Waiting state -->
+    <div class="waiting" id="waitingState">
+      <p>Waiting for the host to start…</p>
+    </div>
+
+    <!-- Summary section -->
+    <div class="summary" id="summarySection" style="display: none;"></div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p><span id="participantCount">—</span> participants online</p>
+  </footer>
+
+  <script type="module" src="js/app-participant.js"></script>
+</body>
+</html>

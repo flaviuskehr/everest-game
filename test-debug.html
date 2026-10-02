@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Test</title>
+  <style>
+    body { font-family: monospace; padding: 2rem; max-width: 1200px; margin: 0 auto; }
+    .log { background: #f5f5f5; padding: 1rem; margin: 1rem 0; border-radius: 4px; }
+    .error { background: #fee; color: #c33; }
+    .success { background: #efe; color: #363; }
+    button { padding: 0.75rem 1.5rem; margin: 0.5rem; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Session Debug Test</h1>
+  <p>Session ID: <strong>test</strong></p>
+
+  <div>
+    <button id="startBtn">Start Session (as Host)</button>
+    <button id="readBtn">Read Session State</button>
+    <button id="resetBtn">Reset Session</button>
+  </div>
+
+  <div id="logs"></div>
+
+  <script type="module">
+    import { firebaseConfig } from './js/firebase-config.js';
+    import {
+      auth,
+      database,
+      signInAnonymously,
+      ref,
+      set,
+      get,
+      onValue
+    } from './js/firebase.js';
+
+    const logsEl = document.getElementById('logs');
+    const sessionId = 'test';
+    const startNode = 'intro'; // From story.md
+
+    function log(message, type = 'log') {
+      const div = document.createElement('div');
+      div.className = `log ${type}`;
+      div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logsEl.insertBefore(div, logsEl.firstChild);
+      console.log(message);
+    }
+
+    // Sign in
+    await signInAnonymously(auth);
+    log(`Signed in as: ${auth.currentUser.uid}`, 'success');
+
+    // Listen to session changes
+    const sessionRef = ref(database, `sessions/${sessionId}`);
+    onValue(sessionRef, (snapshot) => {
+      if (snapshot.exists()) {
+        log(`Session state changed: ${JSON.stringify(snapshot.val())}`, 'success');
+      } else {
+        log('Session state: null (not started)');
+      }
+    });
+
+    // Start session button
+    document.getElementById('startBtn').addEventListener('click', async () => {
+      try {
+        log('Attempting to start session...');
+
+        const sessionData = {
+          currentNode: startNode,
+          status: 'story',
+          winner: null,
+          round: 1,
+          path: []
+        };
+
+        await set(sessionRef, sessionData);
+        log('Session started successfully!', 'success');
+      } catch (error) {
+        log(`Error starting session: ${error.message}`, 'error');
+      }
+    });
+
+    // Read session button
+    document.getElementById('readBtn').addEventListener('click', async () => {
+      try {
+        const snapshot = await get(sessionRef);
+        if (snapshot.exists()) {
+          log(`Current session: ${JSON.stringify(snapshot.val(), null, 2)}`, 'success');
+        } else {
+          log('No session data found');
+        }
+      } catch (error) {
+        log(`Error reading session: ${error.message}`, 'error');
+      }
+    });
+
+    // Reset session button
+    document.getElementById('resetBtn').addEventListener('click', async () => {
+      try {
+        await set(sessionRef, null);
+        log('Session reset', 'success');
+      } catch (error) {
+        log(`Error resetting session: ${error.message}`, 'error');
+      }
+    });
+
+    log('Debug test ready. Try clicking "Start Session".');
+  </script>
+</body>
+</html>

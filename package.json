@@ -1,0 +1,16 @@
+{
+  "name": "everest-together",
+  "version": "1.0.0",
+  "description": "Live voting game for team summits",
+  "type": "module",
+  "scripts": {
+    "test-load": "node test-load.js"
+  },
+  "dependencies": {
+    "firebase": "^10.7.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "playwright": "^1.63.0"
+  }
+}
