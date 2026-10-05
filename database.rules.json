@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "sessions": {
+      "$sessionId": {
+        ".read": "auth != null",
+        ".write": "auth.uid === 'YJ2QRWQRQDR55OlFlpY9blnjbsm2'"
+      }
+    },
+    "votes": {
+      "$sessionId": {
+        "$nodeId": {
+          "$round": {
+            ".read": "auth != null",
+            "$uid": {
+              ".write": "auth.uid === $uid && auth != null && (newData.val() === 'A' || newData.val() === 'B')"
+            }
+          }
+        }
+      }
+    },
+    "presence": {
+      "$sessionId": {
+        "$uid": {
+          ".read": "auth != null",
+          ".write": "auth.uid === $uid"
+        }
+      }
+    }
+  }
+}

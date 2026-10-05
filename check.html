@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Story Check - Everest, Together</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="check-container">
+    <h1 style="font-family: var(--font-serif); font-size: 2.5rem; margin-bottom: 2rem;">Story Check</h1>
+
+    <div class="check-section">
+      <h2>Overall Status</h2>
+      <div id="overallStatus"></div>
+    </div>
+
+    <div class="check-section" id="parseErrorsSection" style="display: none;">
+      <h2>Parse Errors</h2>
+      <ul class="check-list" id="parseErrors"></ul>
+    </div>
+
+    <div class="check-section" id="structuralSection" style="display: none;">
+      <h2>Structural Issues</h2>
+      <ul class="check-list" id="structuralIssues"></ul>
+    </div>
+
+    <div class="check-section" id="imagesSection">
+      <h2>Image Check</h2>
+      <div id="imageCheck">Checking images...</div>
+    </div>
+
+    <div class="check-section">
+      <h2>Story Map</h2>
+      <div class="story-map" id="storyMap"></div>
+    </div>
+
+    <div class="check-section">
+      <h2>Walk Through</h2>
+      <p>Click through the story without Firebase:</p>
+      <div id="walkthrough"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { parseStory } from './js/story-parser.js';
+
+    let story = null;
+    let currentNodeId = null;
+
+    async function init() {
+      try {
+        const response = await fetch('story.md?t=' + Date.now());
+        const storyMd = await response.text();
+        story = parseStory(storyMd);
+
+        displayResults();
+        await checkImages();
+        displayStoryMap();
+        initWalkthrough();
+      } catch (error) {
+        document.getElementById('overallStatus').innerHTML =
+          `<div class="error-message">Failed to load story.md: ${error.message}</div>`;
+      }
+    }
+
+    function displayResults() {
+      const overallEl = document.getElementById('overallStatus');
+
+      if (story.errors.length === 0) {
+        overallEl.innerHTML = '<div class="check-list success"><li>✓ No errors found!</li></div>';
+      } else {
+        overallEl.innerHTML = `<div class="error-message">Found ${story.errors.length} error(s)</div>`;
+
+        const parseErrorsEl = document.getElementById('parseErrors');
+        const structuralEl = document.getElementById('structuralIssues');
+
+        story.errors.forEach(err => {
+          const li = document.createElement('li');
+          li.textContent = `Line ${err.line}: ${err.message}`;
+
+          if (err.line < 100) {
+            parseErrorsEl.appendChild(li);
+            document.getElementById('parseErrorsSection').style.display = 'block';
+          } else {
+            structuralEl.appendChild(li);
+            document.getElementById('structuralSection').style.display = 'block';
+          }
+        });
+      }
+    }
+
+    async function checkImages() {
+      const imageCheckEl = document.getElementById('imageCheck');
+      const images = new Set();
+      const results = [];
+
+      // Collect all images
+      for (const node of Object.values(story.nodes)) {
+        if (node.metadata.image) {
+          images.add(node.metadata.image);
+        }
+      }
+
+      if (images.size === 0) {
+        imageCheckEl.innerHTML = '<p>No images specified in story</p>';
+        return;
+      }
+
+      // Check each image
+      for (const imagePath of images) {
+        try {
+          const response = await fetch(imagePath);
+          if (response.ok) {
+            results.push(`✓ ${imagePath}`);
+          } else {
+            results.push(`✗ ${imagePath} (${response.status})`);
+          }
+        } catch (error) {
+          results.push(`✗ ${imagePath} (not found)`);
+        }
+      }
+
+      imageCheckEl.innerHTML = '<ul class="check-list">' +
+        results.map(r => `<li>${r}</li>`).join('') +
+        '</ul>';
+    }
+
+    function displayStoryMap() {
+      const mapEl = document.getElementById('storyMap');
+      const lines = [];
+
+      function traverse(nodeId, depth = 0) {
+        const indent = '  '.repeat(depth);
+        const node = story.nodes[nodeId];
+
+        if (!node) {
+          lines.push(`${indent}[MISSING: ${nodeId}]`);
+          return;
+        }
+
+        const suffix = node.end ? ' [END]' : '';
+        lines.push(`${indent}${nodeId} | ${node.title}${suffix}`);
+
+        if (node.options) {
+          lines.push(`${indent}  ? ${node.question}`);
+          if (node.options.A) {
+            lines.push(`${indent}    A: ${node.options.A.label}`);
+            traverse(node.options.A.target, depth + 2);
+          }
+          if (node.options.B) {
+            lines.push(`${indent}    B: ${node.options.B.label}`);
+            traverse(node.options.B.target, depth + 2);
+          }
+        } else if (node.next) {
+          lines.push(`${indent}  → next`);
+          traverse(node.next, depth + 1);
+        }
+      }
+
+      if (story.meta.start) {
+        traverse(story.meta.start);
+      }
+
+      mapEl.textContent = lines.join('\n');
+    }
+
+    function initWalkthrough() {
+      const walkthroughEl = document.getElementById('walkthrough');
+
+      if (!story.meta.start) {
+        walkthroughEl.innerHTML = '<p>No start node defined</p>';
+        return;
+      }
+
+      currentNodeId = story.meta.start;
+      renderWalkthroughNode();
+    }
+
+    function renderWalkthroughNode() {
+      const walkthroughEl = document.getElementById('walkthrough');
+      const node = story.nodes[currentNodeId];
+
+      if (!node) {
+        walkthroughEl.innerHTML = `<div class="error-message">Node ${currentNodeId} not found</div>`;
+        return;
+      }
+
+      let html = `<div style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">`;
+      html += `<h3 style="font-family: var(--font-serif); margin-bottom: 1rem;">${node.id} | ${node.title}</h3>`;
+      html += `<div style="margin-bottom: 1rem;">${node.text}</div>`;
+
+      if (node.question) {
+        html += `<p style="font-weight: 600; margin-bottom: 1rem;">${node.question}</p>`;
+        html += `<div style="display: flex; gap: 1rem;">`;
+        html += `<button class="btn btn-primary" onclick="window.walkthroughGoTo('${node.options.A.target}')">A: ${node.options.A.label}</button>`;
+        html += `<button class="btn btn-primary" onclick="window.walkthroughGoTo('${node.options.B.target}')">B: ${node.options.B.label}</button>`;
+        html += `</div>`;
+      } else if (node.next) {
+        html += `<button class="btn btn-primary" onclick="window.walkthroughGoTo('${node.next}')">Next</button>`;
+      } else if (node.end) {
+        html += `<p style="color: var(--accent); font-weight: 600;">END</p>`;
+        html += `<button class="btn btn-secondary" onclick="window.walkthroughGoTo('${story.meta.start}')">Start Over</button>`;
+      }
+
+      html += `</div>`;
+      walkthroughEl.innerHTML = html;
+    }
+
+    window.walkthroughGoTo = function(nodeId) {
+      currentNodeId = nodeId;
+      renderWalkthroughNode();
+    };
+
+    init();
+  </script>
+</body>
+</html>
